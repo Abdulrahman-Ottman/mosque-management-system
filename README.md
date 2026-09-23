@@ -56,21 +56,41 @@ development.
 | `npm run db:test` | rebuild a throwaway Postgres in Docker and run the schema + RLS suite |
 | `npm run db:verify` | check a real Supabase project: schema, seed, functions, RLS |
 | `npm run db:seed` | add sample students + a weekly schedule (idempotent) |
+| `npm run db:reset` | delete all operational data, keeping admins + the 114 surahs (dry run; add `-- --yes` to apply) |
 | `npm run smoke` | sign in as each role and load every route (server must be running) |
 | `npm run visual` | render pages in a headless browser and measure every icon + check for overflow |
 | `npm run user:create -- "<name>" <phone> <role> <password>` | create a login account |
 
 ## Deploying to Vercel
 
-1. Push to GitHub, then Vercel → New Project → import, with **Root Directory** set to
-   `mosque-next`.
-2. Add the four env vars from `.env.local`. Double-check `SUPABASE_SECRET_KEY` has no
-   `NEXT_PUBLIC_` prefix.
-3. Supabase → Authentication → URL Configuration: add the Vercel domain.
-4. Supabase → Authentication → Rate Limits: raise the token limit. The default is 30
+The repository root **is** the app, so Vercel's defaults are correct — leave Root
+Directory alone.
+
+1. Vercel → Add New → Project → import this repository. Framework auto-detects as
+   Next.js; do not override the build or output settings.
+2. Add the environment variables before the first deploy, for **Production, Preview
+   and Development**:
+
+   | Name | Value |
+   |---|---|
+   | `NEXT_PUBLIC_SUPABASE_URL` | `https://<ref>.supabase.co` |
+   | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | `sb_publishable_…` |
+   | `SUPABASE_SECRET_KEY` | `sb_secret_…` — **no** `NEXT_PUBLIC_` prefix |
+   | `NEXT_PUBLIC_APP_TZ` | the mosque's timezone, e.g. `Asia/Damascus` |
+
+   The prefix matters: `NEXT_PUBLIC_` variables are compiled into the browser bundle.
+   The secret key bypasses RLS, so prefixing it would hand every visitor full
+   read/write access to the database.
+3. Deploy, then copy the resulting domain.
+4. Supabase → Authentication → URL Configuration: set **Site URL** to that domain and
+   add `https://<domain>/**` to Redirect URLs.
+5. Supabase → Authentication → Rate Limits: raise the token limit. The default is 30
    requests per 5 minutes per IP, and a mosque behind one connection with everyone
    logging in at class time will hit it.
-5. Change any development passwords before real use.
+6. Change any development passwords before real use.
+
+Security headers (`X-Frame-Options`, `frame-ancestors`, `nosniff`, `Referrer-Policy`,
+`Permissions-Policy`) are set in `next.config.ts` and apply automatically.
 
 ## Architecture
 
