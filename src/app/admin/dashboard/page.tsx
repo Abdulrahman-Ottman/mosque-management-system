@@ -13,7 +13,7 @@ import {
   StatGrid,
   StatTile,
 } from '@/components/ui';
-import { today, weekRange } from '@/lib/arabic-date';
+import { appDayEndUtc, appDayStartUtc, today, weekRange } from '@/lib/arabic-date';
 import {
   STATUS_EXCUSED_ABSENCE,
   STATUS_LATE,
@@ -63,8 +63,10 @@ export default async function AdminDashboard() {
       .from('progress_logs')
       .select('score, type')
       .eq('type', 'memorization')
-      .gte('created_at', `${start}T00:00:00Z`)
-      .lte('created_at', `${end}T23:59:59Z`),
+      // Real local-day boundaries. `${start}T00:00:00Z` would be off by the UTC
+      // offset, shifting the week by three hours at each end.
+      .gte('created_at', appDayStartUtc(start))
+      .lt('created_at', appDayEndUtc(end)),
     // One query for every memorization log, grouped in TS below. The Laravel version
     // ran QuranProgress::forStudent() once per student - an N+1 that would be far
     // worse over the network than it was against a local MySQL.

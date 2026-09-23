@@ -53,3 +53,62 @@ describe('weekRange (Saturday -> Friday)', () => {
     expect(days[6]).toBe('2026-09-11');
   });
 });
+
+describe('timezone-aware timestamp handling (Asia/Damascus, UTC+3)', () => {
+  it('uses Asia/Damascus as the default app timezone', async () => {
+    const { APP_TZ } = await import('../arabic-date');
+    expect(APP_TZ).toBe('Asia/Damascus');
+  });
+
+  it('appDateOf returns the LOCAL date, not the UTC date', async () => {
+    const { appDateOf } = await import('../arabic-date');
+
+    // 22:30 in Al-Tal is 19:30 UTC - same calendar day either way.
+    expect(appDateOf('2026-09-23T19:30:00+00:00')).toBe('2026-09-23');
+
+    // 00:30 in Al-Tal is 21:30 UTC on the PREVIOUS day. This is the case that a
+    // plain `iso.slice(0, 10)` gets wrong: it would answer 2026-09-23.
+    expect(appDateOf('2026-09-23T21:30:00+00:00')).toBe('2026-09-24');
+
+    // 02:59 local is still the previous UTC day.
+    expect(appDateOf('2026-09-23T23:59:00+00:00')).toBe('2026-09-24');
+
+    // 03:00 local is where the two agree again.
+    expect(appDateOf('2026-09-24T00:00:00+00:00')).toBe('2026-09-24');
+  });
+
+  it('appDayStartUtc returns 21:00Z the previous day, not 00:00Z', async () => {
+    const { appDayStartUtc, appDayEndUtc } = await import('../arabic-date');
+
+    // Midnight in Al-Tal on 2026-09-23 is 21:00 UTC on 2026-09-22.
+    expect(appDayStartUtc('2026-09-23')).toBe('2026-09-22T21:00:00.000Z');
+    expect(appDayEndUtc('2026-09-23')).toBe('2026-09-23T21:00:00.000Z');
+  });
+
+  it('a day boundary round-trips: every instant in the range maps to that date', async () => {
+    const { appDayStartUtc, appDayEndUtc, appDateOf } = await import('../arabic-date');
+
+    const start = appDayStartUtc('2026-09-23');
+    const end = appDayEndUtc('2026-09-23');
+
+    expect(appDateOf(start)).toBe('2026-09-23');
+    // One millisecond before the end is still the same local day...
+    expect(appDateOf(new Date(Date.parse(end) - 1).toISOString())).toBe('2026-09-23');
+    // ...and the end instant itself is already the next one.
+    expect(appDateOf(end)).toBe('2026-09-24');
+  });
+
+  it('a late-night class is filed under the day it actually happened', async () => {
+    const { appDateOf, appDayStartUtc, appDayEndUtc } = await import('../arabic-date');
+
+    // A teacher logs memorization at 00:30 local, just after a late class.
+    const loggedAt = '2026-09-23T21:30:00.000Z';
+    expect(appDateOf(loggedAt)).toBe('2026-09-24');
+
+    // It must fall inside the 24th's range, and outside the 23rd's.
+    const within = (d: string) =>
+      loggedAt >= appDayStartUtc(d) && loggedAt < appDayEndUtc(d);
+    expect(within('2026-09-24')).toBe(true);
+    expect(within('2026-09-23')).toBe(false);
+  });
+});

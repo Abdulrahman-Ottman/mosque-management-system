@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 
 import { BookIcon, CloseIcon, RotateIcon, StarIcon } from '@/components/icons';
 import { Chip, DetailRow, EmptyState, cx } from '@/components/ui';
+import { appDateOf, appDateTimeLabel } from '@/lib/arabic-date';
 import { PASS_THRESHOLD } from '@/lib/quran-progress';
 
 export type ProgressLogRow = {
@@ -25,8 +26,9 @@ export type ProgressLogRow = {
 const isFailed = (log: ProgressLogRow) =>
   log.type === 'memorization' && log.score !== null && log.score < PASS_THRESHOLD;
 
-const dateOnly = (iso: string) => iso.slice(0, 10);
-const dateTime = (iso: string) => `${iso.slice(0, 10)} ${iso.slice(11, 16)}`;
+// Timestamps arrive as UTC; show them in the mosque's local time.
+const dateOnly = (iso: string) => appDateOf(iso);
+const dateTime = (iso: string) => appDateTimeLabel(iso);
 
 /**
  * The history list plus its detail modal.

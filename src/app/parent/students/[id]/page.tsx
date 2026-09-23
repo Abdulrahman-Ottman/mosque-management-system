@@ -23,7 +23,14 @@ import {
   StatTile,
   cx,
 } from '@/components/ui';
-import { dayName, labelForDateString, today, weekDays, weekRange } from '@/lib/arabic-date';
+import {
+  appDateOf,
+  dayName,
+  labelForDateString,
+  today,
+  weekDays,
+  weekRange,
+} from '@/lib/arabic-date';
 import {
   STATUS_EXCUSED_ABSENCE,
   STATUS_LATE,
@@ -94,13 +101,16 @@ export default async function ParentStudentPage({ params }: { params: Promise<{ 
 
   const progress = quranProgressFor(memorization as never);
 
-  const todayLogs = memorization.filter((l) => l.created_at.slice(0, 10) === date);
+  // appDateOf converts the stored UTC instant to the mosque's local date. Slicing the
+  // ISO string would give the UTC date, which is a day early for anything logged
+  // between midnight and 03:00 local.
+  const todayLogs = memorization.filter((l) => appDateOf(l.created_at) === date);
   const weekMemorization = memorization.filter((l) => {
-    const d = l.created_at.slice(0, 10);
+    const d = appDateOf(l.created_at);
     return d >= start && d <= end;
   });
   const weekReviews = reviews.filter((l) => {
-    const d = l.created_at.slice(0, 10);
+    const d = appDateOf(l.created_at);
     return d >= start && d <= end;
   });
 
@@ -217,7 +227,7 @@ export default async function ParentStudentPage({ params }: { params: Promise<{ 
                   </span>
                   <span className="block text-[length:var(--text-xs)] text-ink-muted">
                     من {log.from_ayah ?? '-'} إلى {log.to_ayah ?? '-'} ·{' '}
-                    {labelForDateString(log.created_at.slice(0, 10))}
+                    {labelForDateString(appDateOf(log.created_at))}
                   </span>
                 </span>
                 <Chip
@@ -253,7 +263,7 @@ export default async function ParentStudentPage({ params }: { params: Promise<{ 
                     {log.weekly_memorization ?? 'بدون عنوان'}
                   </span>
                   <span className="block text-[length:var(--text-xs)] text-ink-muted">
-                    {labelForDateString(log.created_at.slice(0, 10))}
+                    {labelForDateString(appDateOf(log.created_at))}
                   </span>
                 </span>
                 <Chip tone="amber">
