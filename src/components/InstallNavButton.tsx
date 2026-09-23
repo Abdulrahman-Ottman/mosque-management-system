@@ -19,13 +19,17 @@ type BeforeInstallPromptEvent = Event & {
  */
 export function InstallNavButton() {
   const [deferred, setDeferred] = useState<BeforeInstallPromptEvent | null>(null);
+  const [installed, setInstalled] = useState(false);
 
   useEffect(() => {
     const onBeforeInstall = (e: Event) => {
       e.preventDefault();
       setDeferred(e as BeforeInstallPromptEvent);
     };
-    const onInstalled = () => setDeferred(null);
+    const onInstalled = () => {
+      setInstalled(true);
+      setDeferred(null);
+    };
 
     window.addEventListener('beforeinstallprompt', onBeforeInstall);
     window.addEventListener('appinstalled', onInstalled);
@@ -35,7 +39,7 @@ export function InstallNavButton() {
     };
   }, []);
 
-  if (!deferred) return null;
+  if (installed || !deferred) return null;
 
   return (
     <button
