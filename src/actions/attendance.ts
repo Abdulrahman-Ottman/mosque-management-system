@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 
-import { ATTENDANCE_STATUSES, STATUS_EXCUSED_ABSENCE, isAttendanceStatus } from '@/lib/attendance';
+import { STATUS_EXCUSED_ABSENCE, isAttendanceStatus } from '@/lib/attendance';
 import { today } from '@/lib/arabic-date';
 import { requireRole } from '@/lib/roles';
 import { createClient } from '@/lib/supabase/server';
@@ -72,5 +72,3 @@ export async function saveAttendance(
   revalidatePath('/attendance');
   redirect('/dashboard?saved=1');
 }
-
-export { ATTENDANCE_STATUSES };
