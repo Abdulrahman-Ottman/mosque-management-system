@@ -5,7 +5,7 @@ import { redirect } from 'next/navigation';
 
 import { STATUS_EXCUSED_ABSENCE, isAttendanceStatus } from '@/lib/attendance';
 import { today } from '@/lib/arabic-date';
-import { requireRole } from '@/lib/roles';
+import { getCurrentUser } from '@/lib/roles';
 import { createClient } from '@/lib/supabase/server';
 
 export type AttendanceFormState = { error?: string } | undefined;
@@ -23,7 +23,17 @@ export async function saveAttendance(
   _prev: AttendanceFormState,
   formData: FormData,
 ): Promise<AttendanceFormState> {
-  await requireRole('teacher');
+  // Deliberately NOT requireRole(): that redirects to the login page, which throws
+  // away everything the teacher just ticked and gives no explanation. A submit
+  // handler should report the problem and let them retry.
+  const user = await getCurrentUser();
+
+  if (!user) {
+    return { error: 'انتهت الجلسة. أعد تسجيل الدخول في تبويب آخر ثم اضغط حفظ مرة أخرى.' };
+  }
+  if (user.role !== 'teacher') {
+    return { error: 'هذا الإجراء متاح للأساتذة فقط.' };
+  }
 
   const entries: Array<{ student_id: number; status: string; absence_reason: string | null }> = [];
 
@@ -63,9 +73,12 @@ export async function saveAttendance(
 
   if (error) {
     // RLS raises 42501 if any student in the batch is not this teacher's, and the
-    // whole transaction rolls back - the correct failure mode, but not something to
-    // show the user raw.
-    return { error: 'تعذّر حفظ الحضور. تأكد أن جميع الطلاب تابعون لك وحاول مجددًا.' };
+    // whole transaction rolls back. The code is appended because without it a
+    // failure here is untraceable in production - there is no log to read.
+    const code = error.code ? ` (${error.code})` : '';
+    return {
+      error: `تعذّر حفظ الحضور. تأكد أن جميع الطلاب تابعون لك وحاول مجددًا.${code}`,
+    };
   }
 
   revalidatePath('/dashboard');
