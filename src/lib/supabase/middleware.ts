@@ -47,6 +47,22 @@ export async function updateSession(request: NextRequest) {
   const path = request.nextUrl.pathname;
   const isPublic = PUBLIC_PATHS.includes(path);
 
+  // NEVER redirect a non-GET request.
+  //
+  // Server Actions are POSTs to the current URL, so they pass through here. If this
+  // function answers a POST with a redirect, the action never runs: the submission is
+  // silently discarded, the browser follows the redirect, and the user lands on
+  // another page with no error and no saved data. That is precisely what was
+  // happening when a teacher pressed "حفظ الحضور" - one flaky getUser() on the POST
+  // was enough to throw the whole class's attendance away.
+  //
+  // Refreshing the session above is still worth doing; authorization for these
+  // requests belongs to the action itself (getCurrentUser / requireRole) and to RLS,
+  // both of which fail safely and can report the problem to the user.
+  if (request.method !== 'GET') {
+    return supabaseResponse;
+  }
+
   if (!user && !isPublic) {
     const url = request.nextUrl.clone();
     url.pathname = '/';
